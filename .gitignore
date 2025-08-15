@@ -1,34 +1,55 @@
-# Emacs backup files
+# --- Editors / OS cruft ---
+# Emacs
 *~
 *#
 .#*
-# Vim file artifacts
+# Vim
 .*.sw*
+# macOS
 .DS_Store
-.project
-# omit Go vendor directories
-vendor/
-.vscode
-.gradle
-.idea
-# Dependency directories
-node_modules/
-package-lock.json
-# Ignore Gradle build output directory
-build
-# Ignore Maven build output directory
-target
-
 # Eclipse
 .classpath
 .settings
+.project
 
-# installed Fabric binaries etc.
+# --- IDEs ---
+.vscode
+.gradle
+.idea
+
+# --- Dependencies ---
+node_modules/
+package-lock.json
+
+# --- Build output ---
+build
+target
+dist/
+
+# --- Fabric binaries / scripts / generated artifacts ---
 /bin/
 builders/
 config/
 external-chaincode/
 install-fabric.sh
 
-# override the ignore of all config/ folders
+# Do not ignore this specific config folder from a sample guide
 !full-stack-asset-transfer-guide/infrastructure/sample-network/config
+
+# --- Secrets & certs (do not commit) ---
+.env
+*.pem
+*.key
+*.crt
+/etc/secret-volume/
+
+# --- Test network generated crypto (keep repo clean) ---
+test-network/organizations/
+test-network/docker-compose*.yaml
+test-network/**/keystore/
+test-network/**/msp/
+test-network/**/tls/
+
+# --- App logs (keep git clean) ---
+application-gateway/logs/
+application-gateway/*.log

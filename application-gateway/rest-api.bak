@@ -1,0 +1,151 @@
+// rest-api.js
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const roleAuth = require('./middleware/roleAuth');
+const { connectGateway } = require('./src/app');
+
+async function main() {
+  const app = express();
+  app.use(bodyParser.json());
+
+  // Auth middleware (disabled if DISABLE_AUTH=true)
+  if (process.env.DISABLE_AUTH === 'true') {
+    console.warn('⚠️  Auth middleware disabled for testing');
+  } else {
+    app.use(roleAuth());
+  }
+
+  // We'll initialize these asynchronously so server can start immediately
+  let gateway = null;
+  let grpcClient = null;
+  let contract = null;
+  let gatewayReady = false;
+
+  // Start background initialization of the Fabric Gateway.
+  // This won't block server startup.
+  (async () => {
+    try {
+      console.log('DEBUG: Starting background Fabric Gateway initialization...');
+      const info = await connectGateway(); // expected to return { gateway, client, contract } or similar
+      // Be defensive about what connectGateway returns; support both { contract } and { gateway, client, contract }
+      gateway = info.gateway || info.gatewayObj || null;
+      grpcClient = info.client || info.grpcClient || null;
+      contract = info.contract || null;
+      gatewayReady = !!contract;
+      if (gatewayReady) {
+        console.log('DEBUG: Gateway initialized successfully (background).');
+      } else {
+        console.warn('WARN: Gateway initialized but contract not available.');
+      }
+    } catch (err) {
+      console.error('ERROR: Background gateway initialization failed:', err);
+      // don't crash here; server remains available for health-checks
+    }
+  })();
+
+  // Health check - always available immediately
+  app.get('/test', (_req, res) => res.send('pong'));
+
+  // helper to ensure the contract is ready
+  function requireContract(res) {
+    if (!contract) {
+      res.status(503).json({ error: 'Service not ready: Fabric gateway/contract not yet initialized' });
+      return false;
+    }
+    return true;
+  }
+
+  // POST /records → IssueRecord
+  app.post('/records', async (req, res) => {
+    try {
+      if (!requireContract(res)) return;
+
+      const record = {
+        ID: req.body.ID,
+        farmID: req.body.farmID,
+        methanePPM: req.body.methanePPM,
+        timestamp: req.body.timestamp,
+      };
+
+      // Chaincode expects a single JSON string argument
+      await contract.submitTransaction('IssueRecord', JSON.stringify(record));
+      res.json({ success: true, ID: record.ID });
+    } catch (err) {
+      console.error('Error issuing record:', err);
+      // bubble up gRPC/Fabric error details if available
+      res.status(500).json({ error: err.message || String(err) });
+    }
+  });
+
+  // GET /records/:id → ReadRecord
+  app.get('/records/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      if (!requireContract(res)) return;
+
+      const resultBytes = await contract.evaluateTransaction('ReadRecord', id);
+      const raw = resultBytes.toString().trim();
+
+      // Defensive JSON parse: if chaincode returned non-JSON (e.g. an error string), return 404 or message.
+      if (!raw) {
+        return res.status(404).json({ error: `Record ${id} not found` });
+      }
+      // If it looks like JSON, parse; otherwise return raw message
+      if (raw.startsWith('{') || raw.startsWith('[')) {
+        const record = JSON.parse(raw);
+        if (!record || (Object.keys(record).length === 0)) {
+          return res.status(404).json({ error: `Record ${id} not found` });
+        }
+        return res.json(record);
+      } else {
+        // Non-JSON response from chaincode (could be a not-found message)
+        return res.status(404).json({ error: raw });
+      }
+    } catch (err) {
+      console.error(`❌ Failed to read record ${id}:`, err);
+      res.status(500).json({ error: err.message || String(err) });
+    }
+  });
+
+  // Start server (immediate)
+  const server = app.listen(3000, '0.0.0.0', () =>
+    console.log('🚀 REST API listening on http://127.0.0.1:3000')
+  );
+
+  // Graceful shutdown - close gateway & grpc client if they exist
+  async function shutdown() {
+    console.log('\n🛑 Shutting down server gracefully...');
+    server.close(async () => {
+      try {
+        if (gateway && typeof gateway.close === 'function') {
+          await gateway.close();
+          console.log('✅ Gateway closed');
+        }
+        if (grpcClient && typeof grpcClient.close === 'function') {
+          try { grpcClient.close(); } catch (e) {}
+          console.log('✅ gRPC client closed');
+        }
+      } catch (e) {
+        console.warn('WARN: Error while closing gateway/client:', e);
+      } finally {
+        console.log('✅ Server closed. Exiting.');
+        process.exit(0);
+      }
+    });
+
+    // if server doesn't close in a reasonable time, force exit
+    setTimeout(() => {
+      console.warn('WARN: Force exit after timeout');
+      process.exit(1);
+    }, 5000).unref();
+  }
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+main().catch(err => {
+  console.error('Failed to start REST API:', err);
+  process.exit(1);
+});

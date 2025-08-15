@@ -1,5 +1,12 @@
 [//]: # (SPDX-License-Identifier: CC-BY-4.0)
 
+# CarbonPasture — overlay
+
+This repository is a working overlay on top of the Hyperledger **fabric-samples** tree.  
+Our custom code (Fabric Gateway REST API and related scripts) lives under **application-gateway/** and does **not** commit any test-network crypto or secrets (see `.gitignore`).
+
+---
+
 # Hyperledger Fabric Samples
 
 You can use Fabric samples to get started working with Hyperledger Fabric, explore important Fabric features, and learn how to build applications that can interact with blockchain networks using the Fabric SDKs. To learn more about Hyperledger Fabric, visit the [Fabric documentation](https://hyperledger-fabric.readthedocs.io/en/latest).
@@ -24,7 +31,6 @@ The [Kubernetes Test Network](test-network-k8s) sample builds upon the Compose n
 network with peer, orderer, and CA infrastructure nodes running on Kubernetes.  In addition to providing a sample
 Kubernetes guide, the Kube test network can be used as a platform to author and debug _cloud ready_ Fabric Client
 applications on a development or CI workstation.
-
 
 ## Asset transfer samples and tutorials
 
@@ -64,10 +70,10 @@ Additional samples demonstrate various Fabric use cases and application patterns
 | [Simple Auction](auction-simple) | Run an auction where bids are kept private until the auction is closed, after which users can reveal their bid. | [README](auction-simple/README.md) |
 | [Dutch Auction](auction-dutch) | Run an auction in which multiple items of the same type can be sold to more than one buyer. This example also includes the ability to add an auditor organization. | [README](auction-dutch/README.md) |
 
-
 ## License <a name="license"></a>
 
 Hyperledger Project source code files are made available under the Apache
 License, Version 2.0 (Apache-2.0), located in the [LICENSE](LICENSE) file.
 Hyperledger Project documentation files are made available under the Creative
 Commons Attribution 4.0 International License (CC-BY-4.0), available at http://creativecommons.org/licenses/by/4.0/.
+

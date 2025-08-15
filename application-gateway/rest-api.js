@@ -1,0 +1,150 @@
+/* rest-api.js — safe, minimal, non-blocking gateway init
+   Keeps original flow, minimal changes.
+*/
+const express = require('express');
+const bodyParser = require('body-parser');
+const roleAuth = require('./middleware/roleAuth');
+
+// connectGateway may return either { contract, gateway, client } or { gateway, client, contract }
+let connectGateway;
+try {
+  connectGateway = require('./src/app').connectGateway || require('./src/app').initializeGateway || require('./src/app');
+} catch (e) {
+  // if require fails, we'll try to call it later and log the error
+  connectGateway = null;
+  console.error('WARN: could not require ./src/app — will attempt to require at runtime:', e.message);
+}
+
+const PORT = process.env.PORT || 3000;
+const CONTRACT_RETRY_MS = parseInt(process.env.CONTRACT_RETRY_MS || '30000', 10);
+const CONTRACT_RETRY_INTERVAL = parseInt(process.env.CONTRACT_RETRY_INTERVAL || '1000', 10);
+
+const app = express();
+app.use(bodyParser.json());
+
+// debug request logger (temporary)
+app.use((req, res, next) => { console.log(">>> REQ", req.method, req.url); next(); });
+
+// Auth middleware
+if (process.env.DISABLE_AUTH === 'true') {
+  console.warn('⚠️  Auth middleware disabled for testing');
+} else {
+  app.use(roleAuth());
+}
+
+// readiness state
+let contractConn = null;   // object returned from connectGateway
+let contractReady = false;
+
+// ALWAYS respond immediately to /test and /health
+app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/test', (_req, res) => res.send(contractReady ? 'pong' : 'Service initializing'));
+
+// POST /records -> IssueRecord: sends single JSON-string arg
+app.post('/records', async (req, res) => {
+  if (!contractReady) return res.status(503).json({ error: 'Service initializing' });
+
+  try {
+    const record = {
+      ID: req.body.ID,
+      farmID: req.body.farmID,
+      methanePPM: req.body.methanePPM,
+      timestamp: req.body.timestamp,
+    };
+    // support both shapes of contractConn (contractConn.contract or contractConn)
+    const contract = contractConn.contract || contractConn;
+    await contract.submitTransaction('IssueRecord', JSON.stringify(record));
+    res.json({ success: true, ID: record.ID });
+  } catch (err) {
+    console.error('Error issuing record:', err && err.message ? err.message : err);
+    res.status(500).json({ error: err && err.message ? err.message : String(err) });
+  }
+});
+
+// GET /records/:id -> ReadRecord
+app.get('/records/:id', async (req, res) => {
+  if (!contractReady) return res.status(503).json({ error: 'Service initializing' });
+
+  const { id } = req.params;
+  try {
+    const contract = contractConn.contract || contractConn;
+    const resultBytes = await contract.evaluateTransaction('ReadRecord', id);
+    const resultString = resultBytes.toString().trim();
+
+    // Parse safely
+    try {
+      const record = JSON.parse(resultString);
+      if (!record || Object.keys(record).length === 0) {
+        return res.status(404).json({ error: `Record ${id} not found` });
+      }
+      return res.json(record);
+    } catch (e) {
+      return res.status(500).json({ error: `Non-JSON response from chaincode: ${resultString}` });
+    }
+  } catch (err) {
+    console.error(`❌ Failed to read record ${id}:`, err && err.message ? err.message : err);
+    res.status(500).json({ error: err && err.message ? err.message : String(err) });
+  }
+});
+
+// Start HTTP server immediately (non-blocking)
+const server = app.listen(PORT, '0.0.0.0', () =>
+  console.log(`🚀 REST API listening on http://127.0.0.1:${PORT}`)
+);
+
+// Background: try to load gateway & contract with throttled retries
+async function tryConnect() {
+  const start = Date.now();
+  const timeout = CONTRACT_RETRY_MS;
+  console.log('DEBUG: Starting background Fabric Gateway initialization...');
+  while (Date.now() - start < timeout) {
+    try {
+      if (!connectGateway) {
+        // attempt require again (helps when user changed src/app exports)
+        try {
+          connectGateway = require('./src/app').connectGateway || require('./src/app').initializeGateway || require('./src/app');
+        } catch (e) {
+          console.debug('DEBUG: require(./src/app) failed, will retry:', e.message);
+        }
+      }
+      if (!connectGateway) {
+        await new Promise(r => setTimeout(r, CONTRACT_RETRY_INTERVAL));
+        continue;
+      }
+
+      const maybeConn = await Promise.race([
+        // allow connectGateway to fail fast if it does
+        connectGateway(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('connectGateway timeout')), 5000))
+      ]);
+
+      if (maybeConn) {
+        // accept either contract in top-level or nested .contract
+        const contract = maybeConn.contract || maybeConn;
+        if (contract && typeof contract.evaluateTransaction === 'function') {
+          contractConn = maybeConn;
+          contractReady = true;
+          console.log('DEBUG: Gateway initialized and contract available.');
+          return;
+        }
+      }
+      console.debug('DEBUG: Gateway initialized but contract not ready; retrying...');
+    } catch (e) {
+      console.debug('DEBUG: connectGateway attempt error:', e && e.message ? e.message : String(e));
+    }
+    await new Promise(r => setTimeout(r, CONTRACT_RETRY_INTERVAL));
+  }
+  console.error('ERROR: Gateway initialized but contract not available after retries.');
+}
+
+// Launch background attempt (no await so server keeps responding)
+tryConnect().catch(e => console.error('ERROR in background tryConnect:', e && e.stack ? e.stack : e));
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\\n🛑 Shutting down server gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed. Exiting.');
+    process.exit(0);
+  });
+});
