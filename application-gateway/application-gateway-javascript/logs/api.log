@@ -1,0 +1,6 @@
+nohup: ignoring input
+DEBUG: Starting background Fabric Gateway initialization...
+DEBUG: Initializing Fabric Gateway...
+🚀 REST API listening on http://127.0.0.1:3000
+DEBUG: Gateway initialized successfully.
+DEBUG: Gateway initialized and contract available.

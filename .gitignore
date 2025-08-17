@@ -42,8 +42,18 @@ install-fabric.sh
 *.key
 *.crt
 /etc/secret-volume/
+<<<<<<< HEAD
 
 # --- Test network generated crypto (keep repo clean) ---
+=======
+node_modules/
+dist/
+.env
+*.pem
+*.key
+*.crt
+/etc/secret-volume/
+>>>>>>> 0f5ca27 (chore: intital commit - API + chaincode (no secrets))
 test-network/organizations/
 test-network/docker-compose*.yaml
 test-network/**/keystore/

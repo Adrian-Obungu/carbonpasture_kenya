@@ -1,0 +1,29 @@
+{
+  "name": "asset-transfer-basic",
+  "version": "1.0.0",
+  "description": "Asset Transfer Basic Application implemented in JavaScript using fabric-gateway",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "pretest": "npm run lint",
+    "start": "node src/app.js",
+    "dev": "DISABLE_AUTH=true nodemon --watch src --ext js --exec \"node rest-api.js\""
+  },
+  "engineStrict": true,
+  "author": "Hyperledger",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.2",
+    "@hyperledger/fabric-gateway": "^1.8.0",
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.5.0",
+    "eslint": "^9.5.0",
+    "globals": "^15.6.0",
+    "nodemon": "^3.1.10"
+  }
+}

@@ -1,0 +1,5 @@
+nohup: ignoring input
+⚠️  Auth middleware disabled for testing
+DEBUG: Initializing Fabric Gateway...
+DEBUG: Gateway initialized successfully.
+🚀 REST API listening on http://127.0.0.1:3000
