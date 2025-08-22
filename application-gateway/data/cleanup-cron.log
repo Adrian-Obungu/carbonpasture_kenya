@@ -1,0 +1,21 @@
+==== Cleanup logs (project: /home/ind0/projects/carbonpasture/application-gateway) ====
+Target dirs: /home/ind0/projects/carbonpasture/application-gateway/data, /home/ind0/projects/carbonpasture/application-gateway/backups
+Threshold: files older than 30 days
+Mode: LIVE (will delete)
+
+
+LIVE run complete. Deletions appended to /home/ind0/projects/carbonpasture/application-gateway/data/cleanup.log
+==== Cleanup logs (project: /home/ind0/projects/carbonpasture/application-gateway) ====
+Target dirs: /home/ind0/projects/carbonpasture/application-gateway/data, /home/ind0/projects/carbonpasture/application-gateway/backups
+Threshold: files older than 30 days
+Mode: LIVE (will delete)
+
+
+LIVE run complete. Deletions appended to /home/ind0/projects/carbonpasture/application-gateway/data/cleanup.log
+==== Cleanup logs (project: /home/ind0/projects/carbonpasture/application-gateway) ====
+Target dirs: /home/ind0/projects/carbonpasture/application-gateway/data, /home/ind0/projects/carbonpasture/application-gateway/backups
+Threshold: files older than 30 days
+Mode: LIVE (will delete)
+
+
+LIVE run complete. Deletions appended to /home/ind0/projects/carbonpasture/application-gateway/data/cleanup.log

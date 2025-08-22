@@ -21,46 +21,11 @@ const PORT = process.env.PORT || 3000;
 const CONTRACT_RETRY_MS = parseInt(process.env.CONTRACT_RETRY_MS || '30000', 10);
 const CONTRACT_RETRY_INTERVAL = parseInt(process.env.CONTRACT_RETRY_INTERVAL || '1000', 10);
 
-// --- Phone map persistence (new) ---
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const PHONE_MAP_FILE = path.join(DATA_DIR, 'phone-map.json');
-let phoneMap = Object.create(null);
-
-function normalizePhone(p) {
-  if (!p) return null;
-  let s = String(p).trim().replace(/\s+/g, '');
-  if (s.startsWith('00')) s = '+' + s.slice(2); // 00.. -> +..
-  return s; // keep as provided otherwise (caller should prefer E.164 like +254...)
-}
-
-function ensureDataDir() {
-  try { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
-}
-
-function loadPhoneMapSync() {
-  ensureDataDir();
-  try {
-    const buf = fs.readFileSync(PHONE_MAP_FILE, 'utf8');
-    const obj = JSON.parse(buf);
-    if (obj && typeof obj === 'object') phoneMap = obj;
-  } catch { phoneMap = Object.create(null); }
-}
-
-async function savePhoneMap() {
-  await fs.promises.mkdir(DATA_DIR, { recursive: true });
-  const tmp = PHONE_MAP_FILE + '.tmp';
-  await fs.promises.writeFile(tmp, JSON.stringify(phoneMap, null, 2), 'utf8');
-  await fs.promises.rename(tmp, PHONE_MAP_FILE);
-}
-
-loadPhoneMapSync();
-// --- end phone map block ---
-
 const app = express();
 app.use(bodyParser.json());
 
 // debug request logger (temporary)
-app.use((req, _res, next) => { console.log(">>> REQ", req.method, req.url); next(); });
+app.use((req, res, next) => { console.log(">>> REQ", req.method, req.url); next(); });
 
 // Auth middleware
 if (process.env.DISABLE_AUTH === 'true') {
@@ -76,30 +41,6 @@ let contractReady = false;
 // ALWAYS respond immediately to /test and /health
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/test', (_req, res) => res.send(contractReady ? 'pong' : 'Service initializing'));
-
-// --- New endpoints: phone registration & lookup (do NOT require contractReady) ---
-app.post('/registerPhone', async (req, res) => {
-  try {
-    const phone = normalizePhone(req.body && req.body.phone);
-    const farmID = req.body && req.body.farmID;
-    if (!phone || !farmID) return res.status(400).json({ error: 'phone and farmID required' });
-
-    phoneMap[phone] = { farmID, updatedAt: new Date().toISOString() };
-    await savePhoneMap();
-    return res.json({ ok: true, phone, farmID });
-  } catch (e) {
-    console.error('registerPhone error:', e.message || e);
-    return res.status(500).json({ error: 'Failed to persist mapping' });
-  }
-});
-
-app.get('/lookupPhone/:phone', (req, res) => {
-  const phone = normalizePhone(req.params.phone);
-  const entry = phoneMap[phone];
-  if (!entry) return res.status(404).json({ error: 'not found' });
-  return res.json({ phone, farmID: entry.farmID, updatedAt: entry.updatedAt });
-});
-// --- end new endpoints ---
 
 // POST /records -> IssueRecord: sends single JSON-string arg
 app.post('/records', async (req, res) => {
@@ -171,6 +112,58 @@ app.get('/records/:id', async (req, res) => {
   }
 });
 
+/*
+  Phone mapping (simple file-backed store)
+  - POST /registerPhone  { phone, farmID }   -> stores mapping
+  - GET  /lookupPhone/:phone                 -> returns mapping
+  Stored file: phone_map.json in same folder
+*/
+const PHONE_MAP_FILE = path.join(__dirname, 'phone_map.json');
+
+function readPhoneMap() {
+  try {
+    const raw = fs.readFileSync(PHONE_MAP_FILE, 'utf8');
+    // guard against empty file
+    if (!raw || raw.trim() === '') return {};
+    return JSON.parse(raw);
+  } catch (e) {
+    // missing file or parse error -> return empty map
+    return {};
+  }
+}
+
+function writePhoneMap(map) {
+  try {
+    fs.writeFileSync(PHONE_MAP_FILE, JSON.stringify(map, null, 2), { flag: 'w' });
+    return true;
+  } catch (e) {
+    console.error('Failed to write phone_map.json:', e && e.message ? e.message : e);
+    return false;
+  }
+}
+
+// Register phone -> farm mapping (lightweight, no auth for dev)
+app.post('/registerPhone', (req, res) => {
+  const { phone, farmID } = req.body || {};
+  if (!phone || !farmID) return res.status(400).json({ error: 'Missing phone or farmID' });
+
+  const map = readPhoneMap();
+  map[phone] = farmID;
+  if (!writePhoneMap(map)) {
+    return res.status(500).json({ error: 'Failed to persist mapping' });
+  }
+  return res.json({ success: true, phone, farmID });
+});
+
+// Lookup helper used by USSD service later
+app.get('/lookupPhone/:phone', (req, res) => {
+  const phone = req.params.phone;
+  if (!phone) return res.status(400).json({ error: 'Missing phone param' });
+  const map = readPhoneMap();
+  if (!map[phone]) return res.status(404).json({ error: 'Phone mapping not found' });
+  return res.json({ phone, farmID: map[phone] });
+});
+
 // Start HTTP server immediately (non-blocking)
 const server = app.listen(PORT, '0.0.0.0', () =>
   console.log(`🚀 REST API listening on http://127.0.0.1:${PORT}`)
@@ -226,7 +219,7 @@ tryConnect().catch(e => console.error('ERROR in background tryConnect:', e && e.
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down server gracefully...');
+  console.log('\\n🛑 Shutting down server gracefully...');
   server.close(() => {
     console.log('✅ Server closed. Exiting.');
     process.exit(0);

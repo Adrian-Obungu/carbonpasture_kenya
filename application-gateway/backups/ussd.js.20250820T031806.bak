@@ -1,0 +1,137 @@
+/**
+ * ussd.js - USSD webhook with daily session logging
+ * Each day → new file: data/ussd-YYYY-MM-DD.json
+ */
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+
+const PORT = process.env.USSD_PORT || 4000;
+
+// active sessions (memory)
+const sessions = {};
+
+// helper: today's logfile path
+function getLogFile() {
+  const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return path.join(__dirname, 'data', `ussd-${date}.json`);
+}
+
+// ensure today's file exists
+function ensureLogFile() {
+  const file = getLogFile();
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, '[]', 'utf8');
+  }
+  return file;
+}
+
+// append event to today’s log
+function logSessionEvent(event) {
+  try {
+    const file = ensureLogFile();
+    const logs = JSON.parse(fs.readFileSync(file, 'utf8'));
+    logs.push(event);
+    fs.writeFileSync(file, JSON.stringify(logs, null, 2), 'utf8');
+  } catch (e) {
+    console.error('⚠️ Failed to log session event:', e.message);
+  }
+}
+
+// format USSD reply
+function ussdResponse(type, message) {
+  return `${type} ${message}`;
+}
+
+app.post('/ussd', async (req, res) => {
+  const sessionId = req.body.sessionId || req.body.session || 'sess-' + Date.now();
+  const phoneNumber = req.body.phoneNumber || req.body.msisdn || '+000';
+  const text = req.body.text || "";
+
+  const inputs = text.split('*');
+  const step = inputs.length;
+
+  // log every hit
+  logSessionEvent({
+    sessionId,
+    phoneNumber,
+    text,
+    step,
+    timestamp: new Date().toISOString()
+  });
+
+  if (!sessions[sessionId]) sessions[sessionId] = {};
+
+  if (text === "") {
+    return res.send(
+      ussdResponse("CON", "Welcome\n1. Submit methane reading\n2. Exit")
+    );
+  }
+
+  if (inputs[0] === "2") {
+    return res.send(ussdResponse("END", "Goodbye"));
+  }
+
+  if (inputs[0] === "1" && step === 1) {
+    return res.send(ussdResponse("CON", "Enter your farm ID to register:"));
+  }
+
+  if (inputs[0] === "1" && step === 2) {
+    return res.send(ussdResponse("CON", "Enter methane ppm (e.g. 55.1):"));
+  }
+
+  if (inputs[0] === "1" && step === 3) {
+    const farmID = inputs[1];
+    const ppm = parseFloat(inputs[2]);
+
+    const record = {
+      ID: "rec" + Date.now(),
+      farmID,
+      methanePPM: ppm,
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      const resp = await fetch("http://127.0.0.1:3000/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(record),
+      });
+      const json = await resp.json();
+
+      logSessionEvent({
+        sessionId,
+        phoneNumber,
+        action: "submitRecord",
+        record,
+        backendResponse: json,
+        timestamp: new Date().toISOString()
+      });
+
+      if (json && json.success) {
+        return res.send(
+          ussdResponse("END", `Saved reading.\nFarm: ${farmID}\nPPM: ${ppm}\nID: ${record.ID}`)
+        );
+      } else {
+        return res.send(
+          ussdResponse("END", "Error saving reading, please try again later.")
+        );
+      }
+    } catch (err) {
+      console.error("❌ Error calling backend:", err.message);
+      return res.send(ussdResponse("END", "System error, try again later."));
+    }
+  }
+
+  return res.send(ussdResponse("END", "Invalid input"));
+});
+
+app.listen(PORT, () =>
+  console.log(`📞 USSD service with daily logging listening on http://127.0.0.1:${PORT}`)
+);

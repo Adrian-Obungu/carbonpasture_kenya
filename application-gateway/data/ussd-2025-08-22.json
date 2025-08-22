@@ -1,0 +1,170 @@
+[
+  {
+    "sessionId": "demo-s2",
+    "phoneNumber": "254700000002",
+    "text": "2*farmSmoke*12.3",
+    "step": 0,
+    "timestamp": "2025-08-22T07:39:04.756Z"
+  },
+  {
+    "sessionId": "demo-s2",
+    "phoneNumber": "254700000002",
+    "action": "submitRecord",
+    "record": {
+      "ID": "rec1755848344778",
+      "farmID": "farmSmoke",
+      "methanePPM": 12.3,
+      "timestamp": "2025-08-22T07:39:04.778Z"
+    },
+    "backendResponse": {
+      "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect ECONNREFUSED 127.0.0.1:7051"
+    },
+    "timestamp": "2025-08-22T07:39:05.215Z"
+  },
+  {
+    "sessionId": "s1",
+    "phoneNumber": "254700000002",
+    "text": "1*farmSmoke*0000",
+    "step": 0,
+    "timestamp": "2025-08-22T09:14:44.941Z"
+  },
+  {
+    "sessionId": "s1",
+    "phoneNumber": "254700000002",
+    "action": "register",
+    "farmID": "farmSmoke",
+    "result": {
+      "success": true,
+      "phone": "254700000002",
+      "mapping": {
+        "farmID": "farmSmoke",
+        "updatedAt": "2025-08-22T09:14:44.969Z"
+      }
+    },
+    "timestamp": "2025-08-22T09:14:44.976Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "text": "2*farmSmoke*12.3",
+    "step": 0,
+    "timestamp": "2025-08-22T09:14:44.989Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "action": "submitRecord",
+    "record": {
+      "ID": "rec1755854084992",
+      "farmID": "farmSmoke",
+      "methanePPM": 12.3,
+      "timestamp": "2025-08-22T09:14:44.992Z"
+    },
+    "backendResponse": {
+      "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect ECONNREFUSED 127.0.0.1:7051"
+    },
+    "timestamp": "2025-08-22T09:14:45.132Z"
+  },
+  {
+    "sessionId": "s3",
+    "phoneNumber": "254700000002",
+    "text": "3",
+    "step": 0,
+    "timestamp": "2025-08-22T09:14:45.145Z"
+  },
+  {
+    "sessionId": "s3",
+    "phoneNumber": "254700000002",
+    "action": "queryCredits",
+    "farmID": "farmSmoke",
+    "result": {
+      "farmerID": "farmSmoke",
+      "balance": 1,
+      "history": [
+        {
+          "id": "cred1755681660427",
+          "amount": 1,
+          "reason": "daily-reading",
+          "meta": {
+            "recordID": "rec1755681658350"
+          },
+          "timestamp": "2025-08-20T09:21:00.427Z"
+        }
+      ]
+    },
+    "timestamp": "2025-08-22T09:14:45.158Z"
+  },
+  {
+    "sessionId": "s1",
+    "phoneNumber": "254700000002",
+    "text": "1*farmSmoke*0000",
+    "step": "done",
+    "timestamp": "2025-08-22T09:14:55.469Z"
+  },
+  {
+    "sessionId": "s1",
+    "phoneNumber": "254700000002",
+    "action": "register",
+    "farmID": "farmSmoke",
+    "result": {
+      "success": true,
+      "phone": "254700000002",
+      "mapping": {
+        "farmID": "farmSmoke",
+        "updatedAt": "2025-08-22T09:14:55.478Z"
+      }
+    },
+    "timestamp": "2025-08-22T09:14:55.481Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "text": "2*farmSmoke*12.3",
+    "step": 0,
+    "timestamp": "2025-08-22T09:15:12.524Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "action": "submitRecord",
+    "record": {
+      "ID": "rec1755854112528",
+      "farmID": "farmSmoke",
+      "methanePPM": 12.3,
+      "timestamp": "2025-08-22T09:15:12.528Z"
+    },
+    "backendResponse": {
+      "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect ECONNREFUSED 127.0.0.1:7051"
+    },
+    "timestamp": "2025-08-22T09:15:12.535Z"
+  },
+  {
+    "sessionId": "s3",
+    "phoneNumber": "254700000002",
+    "text": "3",
+    "step": 0,
+    "timestamp": "2025-08-22T09:15:15.014Z"
+  },
+  {
+    "sessionId": "s3",
+    "phoneNumber": "254700000002",
+    "action": "queryCredits",
+    "farmID": "farmSmoke",
+    "result": {
+      "farmerID": "farmSmoke",
+      "balance": 1,
+      "history": [
+        {
+          "id": "cred1755681660427",
+          "amount": 1,
+          "reason": "daily-reading",
+          "meta": {
+            "recordID": "rec1755681658350"
+          },
+          "timestamp": "2025-08-20T09:21:00.427Z"
+        }
+      ]
+    },
+    "timestamp": "2025-08-22T09:15:15.027Z"
+  }
+]

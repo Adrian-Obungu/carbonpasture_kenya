@@ -1,0 +1,16 @@
+{"sessionId":"s1","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"","step":1,"timestamp":"2025-08-20T00:43:43.165Z"}
+{"sessionId":"s1","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"1*farmNEW*55.5","step":1,"timestamp":"2025-08-20T00:43:52.790Z"}
+{"sessionId":"s1","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","action":"submitRecord","record":{"ID":"rec1755650632790","farmID":"farmNEW","methanePPM":55.5,"timestamp":"2025-08-20T00:43:52.790Z"},"timestamp":"2025-08-20T00:43:52.794Z"}
+{"sessionId":"s1","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","action":"backendResponse","backendResp":{"success":true,"ID":"rec1755650632790"},"timestamp":"2025-08-20T00:43:57.749Z"}
+{"sessionId":"smokesess1","phoneHash":"428116e661169ac5180d45bce7416fef43261835f0426029f2d3ff0178ced7ac","text":"","step":1,"timestamp":"2025-08-20T00:49:59.701Z"}
+{"sessionId":"smokeussd1755651001","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"","step":1,"timestamp":"2025-08-20T00:50:01.901Z"}
+{"sessionId":"smokeussd1755651001","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"1*smokeFarm","step":1,"timestamp":"2025-08-20T00:50:01.915Z"}
+{"sessionId":"smokeussd1755651001","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"1*smokeFarm*12.34","step":1,"timestamp":"2025-08-20T00:50:01.929Z"}
+{"sessionId":"smokeussd1755651001","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","action":"submitRecord","record":{"ID":"rec1755651001930","farmID":"smokeFarm","methanePPM":12.34,"timestamp":"2025-08-20T00:50:01.930Z"},"timestamp":"2025-08-20T00:50:01.930Z"}
+{"sessionId":"smokeussd1755651001","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","action":"backendResponse","backendResp":{"success":true,"ID":"rec1755651001930"},"timestamp":"2025-08-20T00:50:04.002Z"}
+{"sessionId":"smokesess1","phoneHash":"428116e661169ac5180d45bce7416fef43261835f0426029f2d3ff0178ced7ac","text":"","step":1,"timestamp":"2025-08-20T00:53:15.570Z"}
+{"sessionId":"smokeussd1755651199","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"","step":1,"timestamp":"2025-08-20T00:53:19.398Z"}
+{"sessionId":"smokeussd1755651199","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"1*smokeFarm","step":1,"timestamp":"2025-08-20T00:53:19.414Z"}
+{"sessionId":"smokeussd1755651199","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","text":"1*smokeFarm*12.34","step":1,"timestamp":"2025-08-20T00:53:19.431Z"}
+{"sessionId":"smokeussd1755651199","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","action":"submitRecord","record":{"ID":"rec1755651199431","farmID":"smokeFarm","methanePPM":12.34,"timestamp":"2025-08-20T00:53:19.431Z"},"timestamp":"2025-08-20T00:53:19.432Z"}
+{"sessionId":"smokeussd1755651199","phoneHash":"d1bc6b5b39390c4a5c9ff69e06f63c8617a9c13e15da0a28437e01b2f8430672","action":"backendResponse","backendResp":{"success":true,"ID":"rec1755651199431"},"timestamp":"2025-08-20T00:53:21.500Z"}

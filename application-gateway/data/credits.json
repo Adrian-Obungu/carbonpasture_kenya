@@ -1,0 +1,30 @@
+{
+  "farmNEW": {
+    "balance": 1,
+    "history": [
+      {
+        "id": "cred1755681487470",
+        "amount": 1,
+        "reason": "daily-reading",
+        "meta": {
+          "recordID": "recSMOKE01"
+        },
+        "timestamp": "2025-08-20T09:18:07.470Z"
+      }
+    ]
+  },
+  "farmSmoke": {
+    "balance": 1,
+    "history": [
+      {
+        "id": "cred1755681660427",
+        "amount": 1,
+        "reason": "daily-reading",
+        "meta": {
+          "recordID": "rec1755681658350"
+        },
+        "timestamp": "2025-08-20T09:21:00.427Z"
+      }
+    ]
+  }
+}

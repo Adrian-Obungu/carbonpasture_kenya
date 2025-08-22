@@ -1,0 +1,23 @@
+Starting rest-api with envs:
+CHAINCODE_NAME=carboncc
+CHANNEL_NAME=mychannel
+TLS_CERT_PATH=/home/ind0/carbonpasture-kenya/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+MSP_ID=Org1MSP
+KEY_PATH=/home/ind0/carbonpasture-kenya/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/883a938db7b46f914681806d291707cae2fe993a02b7a50093461afe9d483c3f_sk
+DISABLE_AUTH=true
+PEER_ENDPOINT=127.0.0.1:7051
+⚠️  Auth middleware disabled for testing
+DEBUG: Starting background Fabric Gateway initialization...
+DEBUG: Initializing Fabric Gateway...
+🚀 REST API listening on http://127.0.0.1:3000
+DEBUG: Gateway initialized successfully.
+DEBUG: Gateway initialized and contract available.
+>>> REQ GET /health
+>>> REQ GET /test
+>>> REQ POST /records
+>>> REQ GET /records/rec004
+>>> REQ POST /registerPhone
+>>> REQ GET /lookupPhone/%2B254712345678
+>>> REQ GET /lookupPhone/%20254712345678
+>>> REQ POST /records
+Terminated

@@ -1,0 +1,68 @@
+[
+  {
+    "sessionId": "s1",
+    "phoneNumber": "254700000002",
+    "text": "1*farmSmoke*0000",
+    "step": 0,
+    "timestamp": "2025-08-21T22:46:46.237Z"
+  },
+  {
+    "sessionId": "s1",
+    "phoneNumber": "254700000002",
+    "action": "register",
+    "farmID": "farmSmoke",
+    "result": {
+      "success": true,
+      "phone": "254700000002",
+      "mapping": {
+        "farmID": "farmSmoke",
+        "updatedAt": "2025-08-21T22:46:46.288Z"
+      }
+    },
+    "timestamp": "2025-08-21T22:46:46.301Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "text": "2*farmSmoke*15.6",
+    "step": 0,
+    "timestamp": "2025-08-21T22:46:56.813Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "action": "submitRecord",
+    "record": {
+      "ID": "rec1755816416816",
+      "farmID": "farmSmoke",
+      "methanePPM": 15.6,
+      "timestamp": "2025-08-21T22:46:56.816Z"
+    },
+    "backendResponse": {
+      "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect ECONNREFUSED 127.0.0.1:7051"
+    },
+    "timestamp": "2025-08-21T22:46:56.981Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "text": "2*farmSmoke*15.6",
+    "step": 0,
+    "timestamp": "2025-08-21T22:47:05.639Z"
+  },
+  {
+    "sessionId": "s2",
+    "phoneNumber": "254700000002",
+    "action": "submitRecord",
+    "record": {
+      "ID": "rec1755816425642",
+      "farmID": "farmSmoke",
+      "methanePPM": 15.6,
+      "timestamp": "2025-08-21T22:47:05.642Z"
+    },
+    "backendResponse": {
+      "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect ECONNREFUSED 127.0.0.1:7051"
+    },
+    "timestamp": "2025-08-21T22:47:05.653Z"
+  }
+]

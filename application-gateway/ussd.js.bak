@@ -1,0 +1,272 @@
+// Full replacement: ussd.js
+// Minimal USSD webhook with privacy + encrypted phone->farm mapping
+// Usage:
+//   export USSD_HASH_KEY="..."        # optional but recommended (HMAC key hex/base64)
+//   export USSD_ENC_KEY="..."         # recommended (32 bytes hex, AES-256-GCM key)
+//   export API_URL="http://127.0.0.1:3000"
+//   node ussd.js
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const fetch = require('node-fetch'); // ensure installed: npm i node-fetch@2
+
+const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+
+const PORT = process.env.USSD_PORT || 4000;
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3000';
+const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data'));
+const PHONE_MAP_PLAIN = path.join(DATA_DIR, 'phone-map.json');
+const PHONE_MAP_ENC = path.join(DATA_DIR, 'phone-map.enc.json');
+
+// Ensure dirs exist
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// Helpers: keys
+const USSD_HASH_KEY = process.env.USSD_HASH_KEY || null; // for HMAC if provided
+const USSD_ENC_KEY = process.env.USSD_ENC_KEY || null;   // AES-256-GCM key (hex or base64), 32 bytes
+
+function normalizePhone(p) {
+  if (!p) return '';
+  return String(p).replace(/\s+/g, '').replace(/^\+/, '');
+}
+
+function hmacPhone(phone) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) return '';
+  if (USSD_HASH_KEY) {
+    // allow hex or base64 keys
+    let key = USSD_HASH_KEY;
+    let keyBuf;
+    try { keyBuf = Buffer.from(key, 'hex'); if (keyBuf.length === 0) throw new Error('zero'); } catch {
+      keyBuf = Buffer.from(key, 'base64');
+    }
+    const h = crypto.createHmac('sha256', keyBuf).update(normalized).digest('hex');
+    return h;
+  } else {
+    // fallback: sha256 without secret (less ideal but still non-reversible)
+    return crypto.createHash('sha256').update(normalized).digest('hex');
+  }
+}
+
+// Encryption helpers for phone map (AES-256-GCM)
+function deriveKeyFromEnv(keyStr) {
+  if (!keyStr) return null;
+  // Accept hex or base64. If hex length 64 => 32 bytes
+  let buf = null;
+  try { buf = Buffer.from(keyStr, 'hex'); } catch (e) { buf = null; }
+  if (!buf || buf.length < 16) {
+    try { buf = Buffer.from(keyStr, 'base64'); } catch (e) { buf = null; }
+  }
+  if (!buf) return null;
+  if (buf.length !== 32) {
+    // If provided key isn't 32 bytes, derive via SHA256 to 32 bytes
+    return crypto.createHash('sha256').update(buf).digest();
+  }
+  return buf;
+}
+
+const ENC_KEY = deriveKeyFromEnv(USSD_ENC_KEY);
+
+function encryptJsonToFile(obj, filepath) {
+  const json = JSON.stringify(obj);
+  if (!ENC_KEY) {
+    // fallback: write plaintext but restrict permissions
+    fs.writeFileSync(filepath.replace('.enc.json', '.json'), json, { mode: 0o600 });
+    return;
+  }
+  const iv = crypto.randomBytes(12); // recommended 12 bytes for GCM
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENC_KEY, iv);
+  const ciphertext = Buffer.concat([cipher.update(json, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const payload = {
+    iv: iv.toString('hex'),
+    tag: tag.toString('hex'),
+    data: ciphertext.toString('hex'),
+  };
+  fs.writeFileSync(filepath, JSON.stringify(payload), { mode: 0o600 });
+}
+
+function decryptJsonFromFile(filepath) {
+  if (!fs.existsSync(filepath)) return {};
+  if (!ENC_KEY) {
+    const plainPath = filepath.replace('.enc.json', '.json');
+    if (fs.existsSync(plainPath)) {
+      const content = fs.readFileSync(plainPath, 'utf8');
+      try { return JSON.parse(content); } catch { return {}; }
+    }
+    return {};
+  }
+  const payload = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+  const iv = Buffer.from(payload.iv, 'hex');
+  const tag = Buffer.from(payload.tag, 'hex');
+  const data = Buffer.from(payload.data, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', ENC_KEY, iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
+  return JSON.parse(decrypted.toString('utf8'));
+}
+
+// Phone map load/save (encrypted if key present)
+function loadPhoneMap() {
+  if (ENC_KEY && fs.existsSync(PHONE_MAP_ENC)) {
+    try { return decryptJsonFromFile(PHONE_MAP_ENC); } catch (e) { console.error('Phone map decrypt failed:', e.message); return {}; }
+  }
+  if (fs.existsSync(PHONE_MAP_PLAIN)) {
+    try { return JSON.parse(fs.readFileSync(PHONE_MAP_PLAIN, 'utf8')); } catch (e) { console.error('Phone map read failed:', e.message); return {}; }
+  }
+  return {};
+}
+
+function savePhoneMap(map) {
+  if (ENC_KEY) {
+    encryptJsonToFile(map, PHONE_MAP_ENC);
+    // ensure plaintext copy removed
+    try { fs.unlinkSync(PHONE_MAP_PLAIN); } catch (e) {}
+  } else {
+    fs.writeFileSync(PHONE_MAP_PLAIN, JSON.stringify(map, null, 2), { mode: 0o600 });
+  }
+}
+
+// append event to daily ndjson log (safe concurrent append)
+function ussdLogAppend(obj) {
+  const file = path.join(DATA_DIR, `ussd-${new Date().toISOString().slice(0,10)}.jsonl`);
+  const line = JSON.stringify(obj) + '\n';
+  fs.appendFileSync(file, line, { mode: 0o600 });
+}
+
+// helper to call backend
+async function submitRecordToBackend(record) {
+  const url = `${API_URL}/records`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+    // short timeout not built-in node-fetch v2; left for simplicity
+  });
+  return res.json();
+}
+
+// USSD state handling (very small memory store)
+const sessions = {};
+
+app.post('/ussd', async (req, res) => {
+  try {
+    const sessionId = req.body.sessionId || req.body.session || `sess-${Date.now()}`;
+    const phoneRaw = req.body.phoneNumber || req.body.phone || req.body.msisdn || '+000';
+    const phone = normalizePhone(phoneRaw);
+    const phoneHash = hmacPhone(phone);
+    const text = (req.body.text || '').trim();
+    const parts = text === '' ? [] : text.split('*').map(p => p.trim());
+    let session = sessions[sessionId] || { step: 0, data: {} };
+
+    // log incoming step (no raw phone)
+    ussdLogAppend({ sessionId, phoneHash, text, step: session.step + 1, timestamp: new Date().toISOString() });
+
+    // menu
+    if (parts.length === 0) {
+      sessions[sessionId] = session;
+      return res.send(`CON Welcome\n1. Submit methane reading\n2. Exit`);
+    }
+
+    // user selected menu option
+    if (parts.length === 1 && parts[0] === '2') {
+      sessions[sessionId] = null;
+      return res.send(`END Thank you.`);
+    }
+
+    // Submit path: parts might be [ '1' ], [ '1', 'farmID' ], or [ '1', 'farmID', 'ppm' ]
+    if (parts[0] === '1') {
+      // ask for farmID if only '1'
+      if (parts.length === 1) {
+        sessions[sessionId] = session;
+        return res.send(`CON Enter your farm ID to register:`);
+      }
+      // if farmID provided but no ppm yet
+      if (parts.length === 2) {
+        // store farmID in session
+        session.data.farmID = parts[1];
+        sessions[sessionId] = session;
+        return res.send(`CON Enter methane ppm (e.g. 55.1):`);
+      }
+      // if farmID and ppm provided -> submit
+      if (parts.length >= 3) {
+        const farmID = parts[1];
+        const ppmRaw = parts[2];
+        const methanePPM = Number(ppmRaw);
+        if (Number.isNaN(methanePPM)) {
+          return res.send(`CON Invalid methane value. Enter methane ppm (e.g. 55.1):`);
+        }
+
+        // create record
+        const record = {
+          ID: `rec${Date.now()}`,
+          farmID,
+          methanePPM,
+          timestamp: new Date().toISOString()
+        };
+
+        // update phone->farm mapping (encrypted on disk)
+        const phoneMap = loadPhoneMap();
+        phoneMap[phone] = { farmID, updatedAt: new Date().toISOString() };
+        savePhoneMap(phoneMap);
+
+        // log action
+        ussdLogAppend({
+          sessionId,
+          phoneHash,
+          action: 'submitRecord',
+          record,
+          timestamp: new Date().toISOString()
+        });
+
+        // submit to backend (non-blocking but we await to report result)
+        let backendResp = null;
+        try {
+          backendResp = await submitRecordToBackend(record);
+        } catch (err) {
+          console.error('Backend submit error:', err && err.message ? err.message : err);
+        }
+
+        ussdLogAppend({ sessionId, phoneHash, action: 'backendResponse', backendResp, timestamp: new Date().toISOString() });
+
+        // finish session
+        sessions[sessionId] = null;
+
+        // Construct reply (safe to echo farm and ppm)
+        const reply = [
+          `END Saved reading.`,
+          `Farm: ${farmID}`,
+          `PPM: ${methanePPM}`,
+          `ID: ${record.ID}`
+        ].join('\n');
+
+        return res.send(reply);
+      }
+    }
+
+    // default fallback
+    return res.send('CON Invalid option. Reply 1 to submit reading, 2 to exit.');
+
+  } catch (e) {
+    console.error('USSD handler error:', e && e.message ? e.message : e);
+    return res.send('END An error occurred. Please try again later.');
+  }
+});
+
+// small helper endpoints for testing (only local)
+app.get('/_internal/phone-map', (req, res) => {
+  // decrypt and return if key present; otherwise return plaintext map
+  const map = ENC_KEY ? decryptJsonFromFile(PHONE_MAP_ENC) : (fs.existsSync(PHONE_MAP_PLAIN) ? JSON.parse(fs.readFileSync(PHONE_MAP_PLAIN,'utf8')) : {});
+  res.json({ encrypted: !!ENC_KEY, map });
+});
+
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`📞 USSD service with daily logging listening on http://127.0.0.1:${PORT}`);
+  if (!USSD_ENC_KEY) {
+    console.warn('⚠️ USSD_ENC_KEY not set — phone->farm map will be stored plaintext (file perms 600).');
+  }
+});

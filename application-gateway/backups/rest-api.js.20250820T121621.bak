@@ -12,7 +12,6 @@ const roleAuth = require('./middleware/roleAuth');
 const fs = require('fs').promises;
 const path = require('path');
 
-
 // connectGateway may return either { contract, gateway, client } or { gateway, client, contract }
 let connectGateway;
 try {

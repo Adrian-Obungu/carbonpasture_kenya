@@ -1,0 +1,13 @@
+{
+  "encrypted": false,
+  "map": {
+    "+254700000001": {
+      "farmID": "farmNEW",
+      "updatedAt": "2025-08-20T09:17:26.922Z"
+    },
+    "254700000002": {
+      "farmID": "farmSmoke",
+      "updatedAt": "2025-08-22T09:14:55.478Z"
+    }
+  }
+}
