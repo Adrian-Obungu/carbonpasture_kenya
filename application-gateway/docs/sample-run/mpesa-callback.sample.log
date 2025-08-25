@@ -1,0 +1,2 @@
+📥 MPESA callback server listening on http://127.0.0.1:4001/callback
+Logs appended to /home/ind0/projects/carbonpasture/application-gateway/data/mpesa-callbacks.log
